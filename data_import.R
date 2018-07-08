@@ -10,6 +10,13 @@ folders <- dir(datadir, full.names = TRUE)
   as.tibble %>% 
   `names<-`(nam) %>% 
   mutate(file = basename(file))
+.read2 <- function(file, nam = c('DE', 'FE', 'BA', 'RPM')){
+  kk <- R.matlab::readMat(file)
+  kk1 <- as.data.frame(kk[2:3]) %>% as.tibble %>% unname() %>% `names<-`(nam)
+  kk2 <- as.data.frame(kk[4:5]) %>% as.tibble %>% unname() %>% `names<-`(nam)
+  kk <- rbind(kk1,kk2) %>% mutate(file = basename(file))
+  kk
+}
 
 data <- NULL
 data <- 
@@ -31,8 +38,28 @@ data <-
          type = factor('Inner', levels = c('Normal', 'Ball', 'Inner', 'Outer3', 'Outer6', 'Outer12'))) %>%
   bind_rows(data)
 data <- 
-  dir(folders[3], full.names = TRUE)[4] %>%
+  dir(folders[3], full.names = TRUE)[c(1,4)] %>%
   map(.read, nam = c('DE', 'FE', 'RPM')) %>% 
+  Reduce(bind_rows, .) %>%
+  separate(file, c('size', 'load', 'extension')) %>% select(-extension) %>%
+  mutate(size = Vectorize(function(x) switch(x, '0' = 0, '1' = 0.007, '2' = 0.014, '3' = 0.021))(size),
+         load = as.numeric(load),
+         type = factor('Normal', levels = c('Normal', 'Ball', 'Inner', 'Outer3', 'Outer6', 'Outer12')),
+         BA = as.numeric(NA)) %>%
+  bind_rows(data)
+data <- 
+  dir(folders[3], full.names = TRUE)[2] %>%
+  map(.read, nam = c('DE', 'FE')) %>% 
+  Reduce(bind_rows, .) %>%
+  separate(file, c('size', 'load', 'extension')) %>% select(-extension) %>%
+  mutate(size = Vectorize(function(x) switch(x, '0' = 0, '1' = 0.007, '2' = 0.014, '3' = 0.021))(size),
+         load = as.numeric(load),
+         type = factor('Normal', levels = c('Normal', 'Ball', 'Inner', 'Outer3', 'Outer6', 'Outer12')),
+         BA = as.numeric(NA)) %>%
+  bind_rows(data)
+data <- 
+  dir(folders[3], full.names = TRUE)[3] %>%
+  map(.read2, nam = c('DE', 'FE')) %>% 
   Reduce(bind_rows, .) %>%
   separate(file, c('size', 'load', 'extension')) %>% select(-extension) %>%
   mutate(size = Vectorize(function(x) switch(x, '0' = 0, '1' = 0.007, '2' = 0.014, '3' = 0.021))(size),
